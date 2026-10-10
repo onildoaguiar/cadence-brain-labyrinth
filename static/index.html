@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cadence Labyrinth</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,560;9..144,680&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <p class="kicker">Cadence brain</p>
+      <h1>Labyrinth</h1>
+    </div>
+    <div class="heat" id="heat">
+      <span id="level-label">Level 1</span>
+      <span class="dot"></span>
+      <span id="kind-label">open corridors</span>
+    </div>
+    <div class="score" id="score">
+      <span><em id="score-you">0</em> you</span>
+      <span><em id="score-brain">0</em> brain</span>
+    </div>
+  </header>
+
+  <section class="challenge-bar" aria-label="Challenges">
+    <p class="challenge-label">Challenges <span id="challenge-count">0/8</span> <span class="challenge-note">Cleared with a new brain</span></p>
+    <div id="challenges"></div>
+    <p class="challenge-hint" id="challenge-hint"></p>
+  </section>
+
+  <main class="stages">
+    <section class="stage brain-stage" aria-label="Cadence brain">
+      <div class="stage-head">
+        <h2>Brain</h2>
+        <p id="brain-dist">At the entrance</p>
+      </div>
+      <div class="maze-wrap">
+        <canvas id="brain-maze"></canvas>
+        <p class="banner" id="brain-banner" hidden></p>
+      </div>
+      <div class="telemetry" id="telemetry">
+        <div class="tele-top">
+          <span class="mode" id="mode">idle</span>
+          <p class="mode-note" id="mode-note">The brain is composed. It has not lived a moment yet.</p>
+        </div>
+        <div class="sparks">
+          <figure>
+            <figcaption>Reward</figcaption>
+            <canvas id="reward-spark" width="320" height="54"></canvas>
+          </figure>
+          <figure>
+            <figcaption>Arousal</figcaption>
+            <canvas id="arousal-spark" width="320" height="54"></canvas>
+          </figure>
+        </div>
+        <dl class="stats" id="stats"></dl>
+      </div>
+    </section>
+
+    <section class="stage you-stage" aria-label="Your labyrinth">
+      <div class="stage-head">
+        <h2>You</h2>
+        <p id="you-dist">At the entrance</p>
+      </div>
+      <div class="maze-wrap">
+        <canvas id="you-maze"></canvas>
+        <p class="banner you" id="you-banner" hidden></p>
+      </div>
+      <div class="controls">
+        <p class="controls-kicker">Controls</p>
+        <p class="controls-title">Use the arrow keys</p>
+        <div class="pad" id="pad">
+          <button type="button" data-dir="n" aria-label="North">↑</button>
+          <button type="button" data-dir="w" aria-label="West">←</button>
+          <button type="button" data-dir="s" aria-label="South">↓</button>
+          <button type="button" data-dir="e" aria-label="East">→</button>
+        </div>
+        <p class="controls-copy">Reach the glowing door. The same labyrinth is on both sides. It starts open, then winds tighter.</p>
+        <button type="button" class="text-btn" id="hatch">New brain</button>
+      </div>
+    </section>
+  </main>
+
+  <div class="veil" id="veil">
+    <div class="card">
+      <p class="kicker">Race</p>
+      <h2 id="veil-title">Beat the brain to the door</h2>
+      <p id="veil-copy">Two copies of one procedural labyrinth. The brain learns from walls, the door’s bearing, and whether it got closer. Your side stays a maze and the arrow keys.</p>
+      <button type="button" class="start" id="start">Start the race</button>
+    </div>
+  </div>
+
+  <p class="toast" id="toast" hidden></p>
+  <script src="/static/app.js"></script>
+</body>
+</html>

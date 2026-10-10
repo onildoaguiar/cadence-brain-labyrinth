@@ -1,0 +1,16 @@
+# Render Blueprint: https://render.com/deploy?repo=https://github.com/onildoaguiar/cadence-brain-labyrinth
+services:
+  - type: web
+    name: cadence-brain-labyrinth
+    runtime: python
+    plan: free
+    region: oregon
+    branch: main
+    buildCommand: pip install -r requirements.txt
+    startCommand: python server.py
+    healthCheckPath: /
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.13.5"
+      - key: HOST
+        value: "0.0.0.0"
