@@ -63,6 +63,9 @@ class Race:
         self.you_bumps = 0
         self.win_streak = 0
         self.achievements = {item["id"]: False for item in CHALLENGES}
+        self.enshrined = False
+        self.paused = False
+        self._frozen_remaining = 0.0
 
     def start(self) -> None:
         if self.phase != "lobby":
@@ -90,9 +93,34 @@ class Race:
         self.you_bumps = 0
         self.win_streak = 0
         self.achievements = {item["id"]: False for item in CHALLENGES}
+        self.enshrined = False
+        self.paused = False
+        self._frozen_remaining = 0.0
         self.maze = self._build_maze()
         self._reset_bodies()
         self.phase = "lobby"
+
+    def new_brain(self) -> None:
+        """Hatch when a life is already going, then start the race."""
+        self.paused = False
+        if self.phase != "lobby":
+            self.hatch()
+        self.start()
+
+    def set_paused(self, paused: bool) -> None:
+        if self.phase == "lobby" or paused == self.paused:
+            return
+        now = time.monotonic()
+        if paused:
+            if self.phase in {"countdown", "interlude"}:
+                self._frozen_remaining = max(0.0, self.until - now)
+            self.paused = True
+            self.held = None
+            self.queued = None
+            return
+        if self.phase in {"countdown", "interlude"}:
+            self.until = now + self._frozen_remaining
+        self.paused = False
 
     def hold(self, direction: str | None) -> None:
         if direction not in {None, "n", "e", "s", "w"}:
@@ -102,6 +130,8 @@ class Race:
             self.queued = direction
 
     def tick(self) -> None:
+        if self.paused:
+            return
         now = time.monotonic()
         if self.phase == "countdown" and now >= self.until:
             self.phase = "race"
@@ -119,7 +149,7 @@ class Race:
         now = time.monotonic()
         countdown = None
         if self.phase == "countdown":
-            remaining = max(0.0, self.until - now)
+            remaining = self._frozen_remaining if self.paused else max(0.0, self.until - now)
             countdown = min(3, max(1, int(np.floor(remaining)) + 1))
         telemetry = self._telemetry()
         you_dist = self._dist(*self.you)
@@ -148,6 +178,7 @@ class Race:
             "winner": self.winner,
             "grace_left": self.grace_left,
             "countdown": countdown,
+            "paused": self.paused,
             "lead": lead,
             "tick_ms": TICK_MS,
             "you": self._body(
@@ -158,7 +189,14 @@ class Race:
             ),
             "telemetry": telemetry,
             "challenges": self._challenge_snapshot(),
+            "fame_ready": self.fame_ready(),
         }
+
+    def fame_ready(self) -> bool:
+        return bool(self.achievements) and all(self.achievements.values()) and not self.enshrined
+
+    def enshrine(self) -> None:
+        self.enshrined = True
 
     def _step_race(self) -> None:
         self.step += 1

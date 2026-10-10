@@ -11,12 +11,20 @@ import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
+from hall import Hall
 from race import TICK_MS, Race
 
 ROOT = Path(__file__).resolve().parent
 STATIC = ROOT / "static"
 GAME = Race()
+HALL = Hall(ROOT / "hall-of-fame.json")
 LOCK = threading.Lock()
+
+
+def public_state() -> dict:
+    payload = GAME.snapshot()
+    payload["hall"] = HALL.public()
+    return payload
 
 
 def _loop() -> None:
@@ -43,7 +51,7 @@ class Handler(BaseHTTPRequestHandler):
         path = self.path.split("?", 1)[0]
         if path == "/api/state":
             with LOCK:
-                payload = GAME.snapshot()
+                payload = public_state()
             self._json(payload)
             return
         if path in {"/", "/index.html"}:
@@ -76,15 +84,34 @@ class Handler(BaseHTTPRequestHandler):
         with LOCK:
             if path == "/api/start":
                 GAME.start()
+            elif path == "/api/new":
+                GAME.new_brain()
             elif path == "/api/hatch":
                 GAME.hatch()
+            elif path == "/api/pause":
+                GAME.set_paused(bool(body.get("paused")))
             elif path == "/api/hold":
                 direction = body.get("dir")
                 GAME.hold(direction if isinstance(direction, str) else None)
+            elif path == "/api/fame":
+                if not GAME.fame_ready():
+                    self._json({"ok": False, "error": "Finish every challenge with this brain first."}, status=400)
+                    return
+                try:
+                    HALL.add(
+                        str(body.get("name", "")),
+                        level=GAME.level,
+                        wins=GAME.scores["you"],
+                        heats=GAME.heats,
+                    )
+                except ValueError as error:
+                    self._json({"ok": False, "error": str(error)}, status=400)
+                    return
+                GAME.enshrine()
             else:
                 self._json({"ok": False}, status=404)
                 return
-            payload = GAME.snapshot()
+            payload = public_state()
         self._json({"ok": True, "state": payload})
 
     def log_message(self, fmt: str, *args) -> None:
@@ -124,7 +151,7 @@ def main() -> None:
     threading.Thread(target=_loop, daemon=True).start()
     server = ThreadingHTTPServer((host, port), Handler)
     shown = "127.0.0.1" if host in {"0.0.0.0", "::"} else host
-    print(f"Cadence labyrinth  http://{shown}:{port}")
+    print(f"Cadence Brain Maze Run  http://{shown}:{port}", flush=True)
     server.serve_forever()
 
 

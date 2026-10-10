@@ -3,26 +3,36 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Cadence Labyrinth</title>
+  <title>Cadence Brain Maze Run</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,560;9..144,680&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/static/style.css" />
+  <link rel="stylesheet" href="/static/style.css?v=10" />
 </head>
 <body>
+  <div class="tip-bar">
+    <p class="tip"><span>Tip</span> New brain starts the game. Arrow keys move you.</p>
+    <div class="tip-actions">
+      <button type="button" class="start" id="hatch">New brain</button>
+      <button type="button" class="pause" id="pause" disabled>Pause</button>
+    </div>
+  </div>
   <header class="top">
     <div class="brand">
       <p class="kicker">Cadence brain</p>
-      <h1>Labyrinth</h1>
+      <h1>Maze run</h1>
     </div>
     <div class="heat" id="heat">
       <span id="level-label">Level 1</span>
       <span class="dot"></span>
       <span id="kind-label">open corridors</span>
     </div>
-    <div class="score" id="score">
-      <span><em id="score-you">0</em> you</span>
-      <span><em id="score-brain">0</em> brain</span>
+    <div class="mast">
+      <div class="score" id="score">
+        <span><em id="score-you">0</em> you</span>
+        <span><em id="score-brain">0</em> brain</span>
+      </div>
+      <button type="button" class="hall-open" id="hall-open">Hall of fame</button>
     </div>
   </header>
 
@@ -79,8 +89,7 @@
           <button type="button" data-dir="s" aria-label="South">↓</button>
           <button type="button" data-dir="e" aria-label="East">→</button>
         </div>
-        <p class="controls-copy">Reach the glowing door. The same labyrinth is on both sides. It starts open, then winds tighter.</p>
-        <button type="button" class="text-btn" id="hatch">New brain</button>
+        <p class="controls-copy">Reach the glowing door. The same labyrinth is on both sides. It starts open, then winds tighter. P pauses.</p>
       </div>
     </section>
   </main>
@@ -90,11 +99,26 @@
       <p class="kicker">Race</p>
       <h2 id="veil-title">Beat the brain to the door</h2>
       <p id="veil-copy">Two copies of one procedural labyrinth. The brain learns from walls, the door’s bearing, and whether it got closer. Your side stays a maze and the arrow keys.</p>
-      <button type="button" class="start" id="start">Start the race</button>
+    </div>
+  </div>
+
+  <div class="fame-card" id="fame-card" hidden>
+    <div class="hall-plaque" role="dialog" aria-labelledby="hall-title">
+      <p class="kicker">Cadence brain</p>
+      <h2 id="hall-title">Hall of fame</h2>
+      <p class="hall-note">Beat every challenge with one brain, then save your name.</p>
+      <form id="fame-form" hidden>
+        <label for="fame-name">Your name</label>
+        <input id="fame-name" name="name" maxlength="24" autocomplete="nickname" placeholder="Your name" required />
+        <p class="fame-error" id="fame-error"></p>
+        <button type="submit" class="start">Save name</button>
+      </form>
+      <ol id="hall-list"></ol>
+      <button type="button" class="pause" id="hall-close">Close</button>
     </div>
   </div>
 
   <p class="toast" id="toast" hidden></p>
-  <script src="/static/app.js"></script>
+  <script src="/static/app.js?v=10"></script>
 </body>
 </html>

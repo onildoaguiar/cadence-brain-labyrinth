@@ -26,6 +26,8 @@ let primedChallenges = false;
 let knownDone = new Set();
 let toastText = "";
 let toastUntil = 0;
+let fameDismissed = false;
+let hallOpen = false;
 const keys = [];
 
 function freshRunner() {
@@ -92,6 +94,11 @@ function paintHud(data) {
   document.getElementById("kind-label").textContent = data.kind;
   document.getElementById("score-you").textContent = data.scores.you;
   document.getElementById("score-brain").textContent = data.scores.brain;
+  const pause = document.getElementById("pause");
+  pause.disabled = data.phase === "lobby";
+  pause.textContent = data.paused ? "Resume" : "Pause";
+  pause.setAttribute("aria-pressed", data.paused ? "true" : "false");
+  document.body.classList.toggle("is-paused", Boolean(data.paused));
   document.getElementById("brain-dist").textContent = distanceLine(data.brain, data);
   document.getElementById("you-dist").textContent = distanceLine(data.you, data);
 
@@ -106,6 +113,7 @@ function paintHud(data) {
   paintBanner("brain-banner", data, "brain");
   paintBanner("you-banner", data, "you");
   paintChallenges(data.challenges || []);
+  paintHall(data);
   paintVeil(data);
 }
 
@@ -193,6 +201,11 @@ function spark(canvas, values, color, zeroLine) {
 
 function paintBanner(id, data, who) {
   const node = document.getElementById(id);
+  if (data.paused && data.phase === "race" && !data.result) {
+    node.hidden = false;
+    node.textContent = "Paused";
+    return;
+  }
   if (data.phase !== "race" || !data.result) {
     node.hidden = true;
     return;
@@ -204,17 +217,57 @@ function paintBanner(id, data, who) {
   else node.textContent = "You are through. The brain is still searching.";
 }
 
+function closeHall() {
+  hallOpen = false;
+  if (latest && latest.fame_ready) fameDismissed = true;
+  document.getElementById("fame-card").hidden = true;
+}
+
+function paintHall(data) {
+  if (!data.fame_ready) fameDismissed = false;
+  const open = document.getElementById("hall-open");
+  open.textContent = data.fame_ready ? "Save your name" : "Hall of fame";
+  open.classList.toggle("ready", Boolean(data.fame_ready));
+  document.getElementById("fame-form").hidden = !data.fame_ready;
+  if (data.fame_ready && !fameDismissed) hallOpen = true;
+  document.getElementById("fame-card").hidden = !hallOpen;
+  const list = document.getElementById("hall-list");
+  const signature = JSON.stringify(data.hall || []);
+  if (list.dataset.signature === signature) return;
+  list.dataset.signature = signature;
+  list.replaceChildren();
+  const entries = data.hall || [];
+  if (!entries.length) {
+    const empty = document.createElement("li");
+    empty.className = "hall-empty";
+    empty.textContent = "No one has finished every challenge yet.";
+    list.append(empty);
+    return;
+  }
+  entries.forEach((entry) => {
+    const item = document.createElement("li");
+    const name = document.createElement("strong");
+    name.textContent = entry.name;
+    const meta = document.createElement("span");
+    meta.textContent = `${entry.when} · level ${entry.level} · ${entry.wins} wins`;
+    item.append(name, meta);
+    list.append(item);
+  });
+}
+
 function paintVeil(data) {
   const title = document.getElementById("veil-title");
   const copy = document.getElementById("veil-copy");
-  const start = document.getElementById("start");
   if (data.phase === "lobby") {
+    veil.hidden = true;
+    return;
+  }
+  if (data.paused && data.phase !== "race") {
     veil.hidden = false;
-    title.textContent = "Beat the brain to the door";
+    title.textContent = "Paused";
     title.className = "";
     copy.hidden = false;
-    copy.textContent = "Two copies of one procedural labyrinth. The brain learns from nearby walls, the door’s bearing, and whether it got closer. Your side is the maze and the arrow keys.";
-    start.hidden = false;
+    copy.textContent = "Resume from the tip at the top. The clock stays where it was.";
     return;
   }
   if (data.phase === "countdown") {
@@ -223,7 +276,6 @@ function paintVeil(data) {
     title.textContent = String(data.countdown || 1);
     title.className = "count";
     copy.hidden = true;
-    start.hidden = true;
     return;
   }
   if (data.phase === "interlude") {
@@ -234,7 +286,6 @@ function paintVeil(data) {
     copy.textContent = toastText
       ? `${toastText} Next labyrinth is larger, with fewer shortcuts.`
       : "Next labyrinth is larger, with fewer shortcuts.";
-    start.hidden = true;
     return;
   }
   veil.hidden = true;
@@ -390,7 +441,14 @@ function roundRect(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
+function setPaused(paused) {
+  post("/api/pause", { paused }).then(() => {
+    if (!paused) syncKeys();
+  }).catch(() => {});
+}
+
 function setHold(direction) {
+  if (latest && latest.paused) return;
   if (held === direction) return;
   held = direction;
   document.querySelectorAll("#pad button").forEach((button) => {
@@ -403,13 +461,30 @@ function syncKeys() {
   setHold(keys.length ? keys[keys.length - 1] : null);
 }
 
+function typingName() {
+  return document.activeElement && document.activeElement.id === "fame-name";
+}
+
 window.addEventListener("keydown", (event) => {
   const map = { ArrowUp: "n", ArrowDown: "s", ArrowLeft: "w", ArrowRight: "e" };
-  if (event.key === "Enter" && latest && latest.phase === "lobby") {
+  if (event.key === "Escape" && hallOpen) {
     event.preventDefault();
-    post("/api/start").catch(() => {});
+    closeHall();
     return;
   }
+  if (typingName() || hallOpen) return;
+  if (event.repeat) return;
+  if (event.key === "Enter" && latest && latest.phase === "lobby") {
+    event.preventDefault();
+    post("/api/new").catch(() => {});
+    return;
+  }
+  if ((event.key === "p" || event.key === "P") && latest && latest.phase !== "lobby") {
+    event.preventDefault();
+    setPaused(!latest.paused);
+    return;
+  }
+  if (latest && latest.paused) return;
   const direction = map[event.key];
   if (!direction) return;
   event.preventDefault();
@@ -436,13 +511,49 @@ pad.addEventListener("pointerdown", (event) => {
 pad.addEventListener("pointerup", () => setHold(null));
 pad.addEventListener("pointercancel", () => setHold(null));
 
-document.getElementById("start").addEventListener("click", () => {
-  post("/api/start").catch(() => {});
+document.getElementById("hatch").addEventListener("click", () => {
+  post("/api/new").catch(() => {});
 });
 
-document.getElementById("hatch").addEventListener("click", () => {
-  post("/api/hatch").catch(() => {});
+document.getElementById("pause").addEventListener("click", () => {
+  if (!latest || latest.phase === "lobby") return;
+  setPaused(!latest.paused);
 });
+
+document.getElementById("fame-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const error = document.getElementById("fame-error");
+  error.textContent = "";
+  const name = document.getElementById("fame-name").value;
+  try {
+    const response = await fetch("/api/fame", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    });
+    const payload = await response.json();
+    if (!response.ok) {
+      error.textContent = payload.error || "Could not save that name.";
+      return;
+    }
+    latest = payload.state;
+    hallOpen = true;
+    fameDismissed = true;
+    document.getElementById("fame-name").value = "";
+    paintHud(latest);
+  } catch (_error) {
+    error.textContent = "Could not reach the server.";
+  }
+});
+
+document.getElementById("hall-open").addEventListener("click", () => {
+  hallOpen = true;
+  document.getElementById("fame-card").hidden = false;
+  const name = document.getElementById("fame-name");
+  if (!document.getElementById("fame-form").hidden) name.focus();
+});
+
+document.getElementById("hall-close").addEventListener("click", closeHall);
 
 window.addEventListener("blur", () => {
   keys.length = 0;

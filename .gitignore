@@ -3,3 +3,5 @@ __pycache__/
 *.pyc
 .DS_Store
 *.npz
+hall-of-fame.json
+hall-of-fame.json.tmp
